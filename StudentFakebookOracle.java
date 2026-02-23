@@ -275,6 +275,39 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 tp.addTaggedUser(u3);
                 results.add(tp);
             */
+           Statement stmt2 = oracle.createStatement(FakebookOracleConstants.AllScroll,
+                FakebookOracleConstants.ReadOnly);
+        
+            ResultSet rst1 = stmt.executeQuery(
+                "SELECT t.tag_photo_id, ph.album_id, ph.photo_link, al.album_name" +
+                " FROM " + TagsTable + " t" +
+                " JOIN " + PhotosTable + " ph ON t.tag_photo_id = ph.photo_id" +
+                " JOIN " + AlbumsTable + " al ON ph.album_id = al.album_id" +
+                " GROUP BY t.tag_photo_id, ph.album_id, ph.photo_link, al.album_name" +
+                " ORDER BY COUNT(*) DESC, t.tag_photo_id ASC"
+            );
+            int count = 0;
+            while (rst1.next() && count < num) {
+                PhotoInfo p = new PhotoInfo(rst1.getLong(1), rst1.getLong(2), rst1.getString(3), rst1.getString(4));
+                TaggedPhotoInfo tp = new TaggedPhotoInfo(p);
+                ResultSet rst2 = stmt2.executeQuery(
+                    "SELECT u.user_id, u.first_name, u.last_name" + 
+                    " FROM ( SELECT tag_photo_id, tag_subject_id FROM " + TagsTable + 
+                            " WHERE tag_photo_id = " + rst1.getLong(1) + " ) t" + 
+                    " JOIN " + UsersTable + " u ON t.tag_subject_id = u.user_id" +
+                    " ORDER BY u.user_id ASC");
+                while (rst2.next()) {
+                    UserInfo u1 = new UserInfo(rst2.getLong(1), rst2.getString(2), rst2.getString(3));
+                    tp.addTaggedUser(u1);
+                }
+                results.add(tp);
+                rst2.close();
+                ++count;
+            }
+            rst1.close();
+            stmt.close();
+            stmt2.close();
+            
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
