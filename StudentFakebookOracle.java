@@ -164,7 +164,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
 
         } catch (SQLException e) {
             System.err.println(e.getMessage());
-            return FirstNameInfo();
+            return new FirstNameInfo();
         }
     }
 
@@ -424,6 +424,9 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 up.addSharedFriend(u3);
                 results.add(up);
             */
+            Statement stmt2 = oracle.createStatement(FakebookOracleConstants.AllScroll,
+                FakebookOracleConstants.ReadOnly);
+
             stmt.executeUpdate(
                 "CREATE VIEW bidirectional AS" +  
                 " SELECT user1_id, user2_id FROM " + FriendsTable +
@@ -462,7 +465,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 );
                 
                 while (rst2.next()) {
-                    u3 = new UserInfo(rst2.getLong(1), rst2.getString(2), rst2.getString(3));
+                    UserInfo u3 = new UserInfo(rst2.getLong(1), rst2.getString(2), rst2.getString(3));
                     up.addSharedFriend(u3);
                 }
                 rst2.close();
@@ -564,7 +567,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 "     UNION" +
                 "     SELECT user2_id AS friend_id FROM " + FriendsTable + " WHERE user1_id = " + userID +
                 " ) f ON u.user_id = f.friend_id" +
-                " ORDER BY u.year_of_birth DESC, u.month_of_birth DESC, u.day_of_birth DESC, f.friend_id DESC" +
+                " ORDER BY u.year_of_birth DESC NULLS LAST, u.month_of_birth DESC NULLS LAST, u.day_of_birth DESC NULLS LAST, f.friend_id DESC" +
                 " FETCH FIRST 1 ROWS ONLY"
             );
             rst.next();
@@ -573,7 +576,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
             rst.close();
             stmt.close();
 
-            return AgeInfo(old, young);
+            return new AgeInfo(old, young);
         } catch (SQLException e) {
             System.err.println(e.getMessage());
             return new AgeInfo(new UserInfo(-1, "ERROR", "ERROR"), new UserInfo(-1, "ERROR", "ERROR"));
