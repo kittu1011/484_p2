@@ -125,10 +125,46 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 info.setCommonNameCount(42);
                 return info;
             */
-            return new FirstNameInfo(); // placeholder for compilation
+            FirstNameInfo info = new FirstNameInfo();
+
+            ResultSet rst = stmt.executeQuery("SELECT DISTINCT first_name" +
+            " FROM " + UsersTable +
+            " WHERE LENGTH(first_name) = (SELECT MAX(LENGTH(first_name)) FROM " + UsersTable + ")" +
+            " ORDER BY first_name ASC");
+
+            while (rst.next()) {
+                info.addLongName(rst.getString(1));
+            }
+
+            rst = stmt.executeQuery("SELECT DISTINCT first_name" +
+            " FROM " + UsersTable +
+            " WHERE LENGTH(first_name) = (SELECT MIN(LENGTH(first_name)) FROM " + UsersTable + ")" +
+            " ORDER BY first_name ASC");
+            
+            while (rst.next()) {
+                info.addShortName(rst.getString(1));
+            }
+
+            rst = stmt.executeQuery(
+                "SELECT first_name, COUNT(*) FROM " + UsersTable +
+                " GROUP BY first_name" +
+                " HAVING COUNT(*) = (SELECT MAX(COUNT(*)) FROM " + UsersTable + " GROUP BY first_name)" +
+                " ORDER BY first_name ASC"
+            );
+
+            while (rst.next()) {
+                info.addCommonName(rst.getString(1));
+                info.setCommonNameCount(rst.getLong(2));  //overwriting chill cuz its same count
+            }
+
+            rst.close();
+            stmt.close();
+
+            return info;
+
         } catch (SQLException e) {
             System.err.println(e.getMessage());
-            return new FirstNameInfo();
+            return FirstNameInfo();
         }
     }
 
