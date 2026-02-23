@@ -543,7 +543,37 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 UserInfo young = new UserInfo(80000000, "Neil", "deGrasse Tyson");
                 return new AgeInfo(old, young);
             */
-            return new AgeInfo(new UserInfo(-1, "UNWRITTEN", "UNWRITTEN"), new UserInfo(-1, "UNWRITTEN", "UNWRITTEN")); // placeholder for compilation
+            ResultSet rst = stmt.executeQuery(
+                "SELECT u.user_id, u.first_name, u.last_name" +
+                " FROM " + UsersTable + " u" +
+                " JOIN (" +
+                "     SELECT user1_id AS friend_id FROM " + FriendsTable + " WHERE user2_id = " + userID +
+                "     UNION" +
+                "     SELECT user2_id AS friend_id FROM " + FriendsTable + " WHERE user1_id = " + userID +
+                " ) f ON u.user_id = f.friend_id" +
+                " ORDER BY u.year_of_birth ASC, u.month_of_birth ASC, u.day_of_birth ASC, f.friend_id DESC" +
+                " FETCH FIRST 1 ROWS ONLY"
+            );
+            rst.next();
+            UserInfo old = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3))
+            rst = stmt.executeQuery(
+                "SELECT u.user_id, u.first_name, u.last_name" +
+                " FROM " + UsersTable + " u" +
+                " JOIN (" +
+                "     SELECT user1_id AS friend_id FROM " + FriendsTable + " WHERE user2_id = " + userID +
+                "     UNION" +
+                "     SELECT user2_id AS friend_id FROM " + FriendsTable + " WHERE user1_id = " + userID +
+                " ) f ON u.user_id = f.friend_id" +
+                " ORDER BY u.year_of_birth DESC, u.month_of_birth DESC, u.day_of_birth DESC, f.friend_id DESC" +
+                " FETCH FIRST 1 ROWS ONLY"
+            );
+            rst.next();
+            UserInfo young = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3))
+            
+            rst.close();
+            stmt.close();
+
+            return AgeInfo(old, young);
         } catch (SQLException e) {
             System.err.println(e.getMessage());
             return new AgeInfo(new UserInfo(-1, "ERROR", "ERROR"), new UserInfo(-1, "ERROR", "ERROR"));
