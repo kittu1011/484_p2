@@ -555,7 +555,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 " FETCH FIRST 1 ROWS ONLY"
             );
             rst.next();
-            UserInfo old = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3))
+            UserInfo old = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3));
             rst = stmt.executeQuery(
                 "SELECT u.user_id, u.first_name, u.last_name" +
                 " FROM " + UsersTable + " u" +
@@ -568,8 +568,8 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 " FETCH FIRST 1 ROWS ONLY"
             );
             rst.next();
-            UserInfo young = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3))
-            
+            UserInfo young = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3));
+
             rst.close();
             stmt.close();
 
@@ -601,6 +601,28 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 SiblingInfo si = new SiblingInfo(u1, u2);
                 results.add(si);
             */
+            ResultSet rst = stmt.executeQuery(
+                "SELECT u1.user_id, u1.first_name, u1.last_name," +
+                "       u2.user_id, u2.first_name, u2.last_name" +
+                " FROM " + UsersTable + " u1" +
+                " JOIN " + UsersTable + " u2 ON u1.last_name = u2.last_name AND u1.user_id < u2.user_id" +
+                " JOIN " + HometownCitiesTable + " hc1 ON u1.user_id = hc1.user_id" +
+                " JOIN " + HometownCitiesTable + " hc2 ON u2.user_id = hc2.user_id AND hc1.hometown_city_id = hc2.hometown_city_id" +
+                " WHERE ABS(u1.year_of_birth - u2.year_of_birth) < 10" +
+                " AND EXISTS (" +
+                "     SELECT 1 FROM " + FriendsTable + " f" +
+                "     WHERE f.user1_id = u1.user_id AND f.user2_id = u2.user_id)" +
+                " ORDER BY u1.user_id ASC, u2.user_id ASC"
+            );
+
+            while (rst.next()) {
+                UserInfo u1 = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3));
+                UserInfo u2 = new UserInfo(rst.getLong(4), rst.getString(5), rst.getString(6));
+                results.add(new SiblingInfo(u1, u2));
+            }
+
+            rst.close();
+            stmt.close();
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
