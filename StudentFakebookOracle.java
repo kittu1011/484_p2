@@ -194,8 +194,7 @@ public final class StudentFakebookOracle extends FakebookOracle {
                                 "    SELECT f1.user1_id FROM " + FriendsTable + " f1 " + //
                                 "    UNION " + //
                                 "    SELECT f2.user2_id FROM " + FriendsTable + " f2 " + //
-                                ") ORDER BY u.user_id ASC"
-           );
+                                ") ORDER BY u.user_id ASC");
 
             while (rst.next()) {
                 results.add(new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3)));
@@ -228,6 +227,22 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 results.add(u1);
                 results.add(u2);
             */
+            ResultSet rst = stmt.executeQuery(
+                "SELECT u.user_id, u.first_name, u.last_name" + 
+                " FROM " + UsersTable + " u" + 
+                " JOIN " + CurrentCitiesTable + " CC ON u.user_id = CC.user_id" +
+                " JOIN " + HometownCitiesTable + " HC ON u.user_id = HC.user_id" + 
+                " WHERE CC.current_city_id <> HC.hometown_city_id" + 
+                " ORDER BY u.user_id ASC"
+            );
+
+            while (rst.next()) {
+                results.add(new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3)));
+            }
+
+            rst.close();
+            stmt.close();
+
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
