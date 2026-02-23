@@ -290,12 +290,14 @@ public final class StudentFakebookOracle extends FakebookOracle {
             while (rst1.next() && count < num) {
                 PhotoInfo p = new PhotoInfo(rst1.getLong(1), rst1.getLong(2), rst1.getString(3), rst1.getString(4));
                 TaggedPhotoInfo tp = new TaggedPhotoInfo(p);
+
                 ResultSet rst2 = stmt2.executeQuery(
                     "SELECT u.user_id, u.first_name, u.last_name" + 
                     " FROM ( SELECT tag_photo_id, tag_subject_id FROM " + TagsTable + 
                             " WHERE tag_photo_id = " + rst1.getLong(1) + " ) t" + 
                     " JOIN " + UsersTable + " u ON t.tag_subject_id = u.user_id" +
                     " ORDER BY u.user_id ASC");
+
                 while (rst2.next()) {
                     UserInfo u1 = new UserInfo(rst2.getLong(1), rst2.getString(2), rst2.getString(3));
                     tp.addTaggedUser(u1);
@@ -388,7 +390,6 @@ public final class StudentFakebookOracle extends FakebookOracle {
             results.add(mp);
             count++;
         }
-
         rst1.close();
         stmt2.close();
         stmt.close();
@@ -423,6 +424,56 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 up.addSharedFriend(u3);
                 results.add(up);
             */
+            stmt.executeUpdate(
+                "CREATE VIEW bidirectional AS" +  
+                " SELECT user1_id, user2_id FROM " + FriendsTable +
+                " UNION" +
+                " SELECT user2_id, user1_id FROM " + FriendsTable
+            );
+
+            ResultSet rst1 = stmt.executeQuery(
+                "SELECT u1.user_id, u1.first_name, u1.last_name, u2.user_id, u2.first_name, u2.last_name" +
+                " FROM " + UsersTable + " u1" +
+                " JOIN " + UsersTable + " u2 ON u1.user_id < u2.user_id" +
+                " JOIN bidirectional b1 ON b1.user1_id = u1.user_id" +
+                " JOIN bidirectional b2 ON b2.user1_id = u2.user_id AND b1.user2_id = b2.user2_id" +
+                " WHERE NOT EXISTS (" +
+                "     SELECT 1 FROM " + FriendsTable + " f" +
+                "     WHERE f.user1_id = u1.user_id AND f.user2_id = u2.user_id" +
+                " )" +
+                " GROUP BY u1.user_id, u1.first_name, u1.last_name," +
+                "          u2.user_id, u2.first_name, u2.last_name" +
+                " ORDER BY COUNT(*) DESC, u1.user_id ASC, u2.user_id ASC"
+            );
+
+            int count = 0;
+            while (rst1.next() && count < num) {
+                UserInfo u1 = new UserInfo(rst1.getLong(1), rst1.getString(2), rst1.getString(3));
+                UserInfo u2 = new UserInfo(rst1.getLong(4), rst1.getString(5), rst1.getString(6));
+                UsersPair up = new UsersPair(u1, u2);
+
+                ResultSet rst2 = stmt2.executeQuery(
+                    "SELECT u.user_id, u.first_name, u.last_name" +
+                    " FROM bidirectional b1" +
+                    " JOIN bidirectional b2 ON b1.user2_id = b2.user1_id" +
+                    " JOIN " + UsersTable + " u ON b1.user2_id = u.user_id" +
+                    " WHERE b1.user1_id = " + rst1.getLong(1) + " AND b2.user2_id = " + rst1.getLong(4) +
+                    " ORDER BY u.user_id ASC"
+                );
+                
+                while (rst2.next()) {
+                    u3 = new UserInfo(rst2.getLong(1), rst2.getString(2), rst2.getString(3));
+                    up.addSharedFriend(u3);
+                }
+                rst2.close();
+                results.add(up);
+                count++;
+            }
+
+            rst1.close();
+            stmt2.close();
+            stmt.executeUpdate("DROP VIEW bidirectional");
+            stmt.close();
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
