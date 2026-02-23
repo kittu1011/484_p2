@@ -342,6 +342,57 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 mp.addSharedPhoto(p);
                 results.add(mp);
             */
+        Statement stmt2 = oracle.createStatement(FakebookOracleConstants.AllScroll,
+                FakebookOracleConstants.ReadOnly);
+
+        ResultSet rst1 = stmt.executeQuery(
+            "SELECT u1.user_id, u1.first_name, u1.last_name, u1.year_of_birth," +
+            "       u2.user_id, u2.first_name, u2.last_name, u2.year_of_birth" +
+            " FROM " + UsersTable + " u1" +
+            " JOIN " + UsersTable + " u2 ON u1.gender = u2.gender AND u1.user_id < u2.user_id" +
+            " JOIN " + TagsTable + " t1 ON u1.user_id = t1.tag_subject_id" +
+            " JOIN " + TagsTable + " t2 ON u2.user_id = t2.tag_subject_id" +
+            "                           AND t1.tag_photo_id = t2.tag_photo_id" +
+            " WHERE ABS(u1.year_of_birth - u2.year_of_birth) <= " + yearDiff +
+            " AND NOT EXISTS (" +
+            "     SELECT 1 FROM " + FriendsTable + " f" +
+            "     WHERE f.user1_id = u1.user_id AND f.user2_id = u2.user_id" +
+            " )" +
+            " GROUP BY u1.user_id, u1.first_name, u1.last_name, u1.year_of_birth," +
+            "          u2.user_id, u2.first_name, u2.last_name, u2.year_of_birth" +
+            " ORDER BY COUNT(*) DESC, u1.user_id ASC, u2.user_id ASC"
+        );
+        int count = 0;
+        while (rst1.next() && count < num) {
+            UserInfo u1 = new UserInfo(rst1.getLong(1), rst1.getString(2), rst1.getString(3));
+            UserInfo u2 = new UserInfo(rst1.getLong(5), rst1.getString(6), rst1.getString(7));
+            MatchPair mp = new MatchPair(u1, rst1.getLong(4), u2, rst1.getLong(8));
+
+            ResultSet rst2 = stmt2.executeQuery(
+                "SELECT t1.tag_photo_id, ph.photo_link, ph.album_id, al.album_name" +
+                " FROM " + TagsTable + " t1" +
+                " JOIN " + TagsTable + " t2 ON t1.tag_photo_id = t2.tag_photo_id" +
+                " JOIN " + PhotosTable + " ph ON t1.tag_photo_id = ph.photo_id" +
+                " JOIN " + AlbumsTable + " al ON ph.album_id = al.album_id" +
+                " WHERE t1.tag_subject_id = " + rst1.getLong(1) +
+                " AND t2.tag_subject_id = " + rst1.getLong(5) +
+                " ORDER BY t1.tag_photo_id ASC"
+            );
+
+            while (rst2.next()) {
+                PhotoInfo p = new PhotoInfo(rst2.getLong(1), rst2.getLong(3),
+                                            rst2.getString(2), rst2.getString(4));
+                mp.addSharedPhoto(p);
+            }
+            rst2.close();
+            results.add(mp);
+            count++;
+        }
+
+        rst1.close();
+        stmt2.close();
+        stmt.close();
+
         } catch (SQLException e) {
             System.err.println(e.getMessage());
         }
